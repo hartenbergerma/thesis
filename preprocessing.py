@@ -1,0 +1,223 @@
+import spectral as sp
+from scipy.ndimage import convolve1d
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from spectral import BandInfo
+
+def get_array(img):
+    '''
+    Returns the image as a numpy array.
+    input:
+        img: image to convert, SpyFile or array-like
+    output:
+        image as numpy array
+    '''
+    if isinstance(img, np.ndarray):
+        return img
+    if isinstance(img, sp.io.bilfile.BilFile):
+        img = img.asarray()
+    else:
+        try:
+            img = np.asarray(img)
+        except:
+            raise ValueError("Unsupported input type")
+    return img
+
+def project_img(img, white_ref, dark_ref):
+    '''
+    Project the image onto the subspace orthogonal to the illumination spectrum.
+    input:
+        img: image to project, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+        white_ref: white reference, shape (...,k) where m is the number of white reference pixels
+        dark_ref: white reference, shape (...,k) where n is the number of dark reference pixels
+    output:
+        projected image as np.array
+    '''
+    img, white_ref, dark_ref = get_array(img), get_array(white_ref), get_array(dark_ref)
+    # calculate reflectance
+    R = np.subtract(img, dark_ref, dtype=np.float32)
+    # calculate illumination spectrum E
+    E = np.mean(np.subtract(white_ref, dark_ref, dtype=np.float32), axis=-2).squeeze()
+    E = smooth_spectral(E, 5)
+    # get mapping to subspace orthogonal to E
+    P_E = np.eye(E.shape[0]) - np.outer(E, E)/np.dot(E, E)
+    # apply mapping to data
+    # R_E = np.einsum('ij,klj->kli', P_E, R) 
+    R_E = np.einsum('ij,...j->...i', P_E, R) 
+    return R_E
+
+def calibrate_img(img, white_ref, dark_ref):
+    '''
+    Calibrate the image using the white and dark references.
+    input:
+        img: image to calibrate, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+        white_ref: white reference, shape (...,k) where m is the number of white reference pixels
+        dark_ref: white reference, shape (...,k) where n is the number of dark reference pixels
+    output:
+        calibrated image as np.array
+    '''
+    img, white_ref, dark_ref = get_array(img), get_array(white_ref), get_array(dark_ref)
+    # calculate reflectance
+    R = np.subtract(img, dark_ref, dtype=np.float32)
+    # calculate illumination spectrum E
+    # first subract dark reference from white reference pixel-wise to get rid of pixel differences, then average over pixels to minimize noise
+    E = np.mean(np.subtract(white_ref, dark_ref, dtype=np.float32), axis=-2, keepdims=True)
+    img_calibrated = np.divide(R,E)
+    return img_calibrated
+
+def band_removal(img, new_range, orig_bands=None):
+    '''
+    Remove bands from the image that are not in the specified range.
+    input:
+        img: image to convert, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+        new_range: range of bands to keep, list containing min and max band
+        orig_bands: original band centers, list
+    output:
+        image as numpy array
+    '''
+    if isinstance(img, sp.io.bilfile.BilFile):
+        orig_bands = img.bands.centers
+    if orig_bands is None:
+        raise ValueError("orig_bands must be provided when img is not a SpyFile")
+    img = get_array(img)
+    orig_bands = np.array(orig_bands).squeeze()
+    idx = (orig_bands >= new_range[0]) & (orig_bands <= new_range[1])
+    img_cropped = img[...,idx]
+    new_bands = orig_bands[idx]
+    return img_cropped, new_bands
+
+def calibrate_img_advanced(img, white_ref, dark_ref, average_ref_pixels=False):
+    '''
+    Calibrate the image using the white and dark references using normalization from https://link.springer.com/chapter/10.1007/978-3-031-18256-3_43.
+    input:
+        img: image to calibrate, np.array or SpyFile
+        white_ref: white reference, np.array or SpyFile
+        dark_ref: white reference, np.array or SpyFile
+        average_ref_pixels: if True, average the white and dark references over the input image before calibration
+    output:
+        calibrated image as np.array
+    '''
+    img, white_ref, dark_ref = get_array(img), get_array(white_ref), get_array(dark_ref)
+    if average_ref_pixels:
+        white_ref = np.mean(white_ref, axis=(0,1))
+        dark_ref = np.mean(dark_ref, axis=(0,1))
+        white_ref = np.tile(white_ref, (img.shape[1], 1))
+        dark_ref = np.tile(dark_ref, (img.shape[1], 1))
+    alpha = np.subtract(img, dark_ref, dtype=np.float32)
+    beta = np.subtract(white_ref, dark_ref, dtype=np.float32) - np.min(alpha)
+    beta_hat = np.divide(beta, np.max(beta, axis=(0,1)))
+    alpha_hat = np.divide(alpha - np.min(alpha), beta_hat)
+    img_calibrated = np.divide(alpha_hat, np.max(alpha_hat, axis=(0,1))) * 100
+    return img_calibrated
+
+def l1_normalize(img):
+    '''
+    Normalize the image spectral signatures pixel-wise to unit L1 norm.
+    Spectral dimension must be the last dimension.
+    input:
+        img: image to normalize, np.array or SpyFile
+    output:
+        image as np.array
+    '''
+    img = get_array(img)
+    img = np.divide(img, np.linalg.norm(img, ord=1, axis=-1, keepdims=True))
+    return img
+
+def normalize_bands_std(img, class_wise=False, gt_map=None):
+    '''
+    Normalize the image spectral signatures band-wise to unit variance.
+    '''
+    img, gt_map = get_array(img), get_array(gt_map)
+    img_norm = np.zeros_like(img)
+    if class_wise:
+        if gt_map is None:
+            raise ValueError("gt_map must be provided when class_wise is True")
+        classes = np.unique(gt_map)
+        for class_id in classes:
+            mask = np.where(gt_map[:,:,0] == class_id)
+            class_std = np.std(img[mask], axis=0)
+            class_mean = np.mean(img[mask], axis=0)
+            img_norm[mask] = (img[mask] - class_mean) / class_std + class_mean
+    else:
+        img_norm = (img - np.mean(img, axis=(0,1))) / np.std(img, axis=(0,1)) + np.mean(img, axis=(0,1))
+    return img_norm
+
+def smooth_spectral(img, window_size=5):
+    '''
+    Smooth the image using a mean filter.
+    input:
+        img: image to smooth, np.array or SpyFile
+        window_size: size of the smoothing window, int
+    output:
+        smoothed image as np.array
+    '''
+    img = get_array(img)
+    kernel = np.ones(window_size)/window_size
+    img_smooth = convolve1d(img, kernel, mode='nearest', axis=-1)
+    return img_smooth
+
+def to_absorbance(img):
+    '''
+    Convert image spectral signatures to absorbance.
+    A(lambda) = -log(img(lambda)).
+    input:
+        img: image to convert, np.array or SpyFile
+    output:
+        image as np.array
+    '''
+    img = get_array(img)
+    img_absorbance = -np.log(img)
+    return img_absorbance
+
+def normalize_spectral_interval(img):
+    '''
+    Normalize the image spectral signatures pixel-wise to the interval [0,1].
+    input:
+        img: image to normalize, np.array or SpyFile
+    output:
+        image as np.array
+    '''
+    img = get_array(img)
+    img_min = np.min(img, axis=-1)[..., np.newaxis]
+    img_max = np.max(img, axis=-1)[..., np.newaxis]
+    img_spectral_norm = np.divide(
+        np.subtract(img, img_min),
+        np.subtract(img_max, img_min))
+    return img_spectral_norm
+
+def normalize_spectral_interval_mean(img, class_wise=False, gt_map=None):
+    '''
+    Normalize the image spectral signatures mean to [0,1].
+    If class_wise is True, normalize each class separately.
+    input:
+        img: image to normalize, np.array or SpyFile
+        class_wise: if True, normalize each class separately, bool
+        gt_map: ground truth map, np.array or SpyFile
+    output:
+        image as np.array
+    '''
+    img = get_array(img)
+    if class_wise:
+        img_spectral_norm = np.zeros_like(img)
+        if gt_map is None:
+            raise ValueError("gt_map must be provided when class_wise is True")
+        gt_map = get_array(gt_map)
+        classes = np.unique(gt_map)
+        for class_id in classes:
+            mask = np.where(gt_map[:,:,0] == class_id)
+            class_mean = np.mean(img[mask], axis=0)
+            class_mean_min = np.min(class_mean, axis=0)
+            class_mean_max = np.max(class_mean, axis=0)
+            img_spectral_norm[mask] = np.divide(
+                np.subtract(img[mask], class_mean_min),
+                np.subtract(class_mean_max, class_mean_min))
+    else:
+        spectral_mean = np.mean(img, axis=(0,1))
+        mean_min = np.min(spectral_mean)
+        mean_max = np.max(spectral_mean)
+        img_spectral_norm = np.divide(
+            np.subtract(img, mean_min),
+            np.subtract(mean_max, mean_min))
+    return img_spectral_norm
