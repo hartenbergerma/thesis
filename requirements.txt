@@ -4,3 +4,8 @@ matplotlib
 spectral
 ipympl
 PyOpenGL
+scipy
+cvxpy
+scikit_learn
+seaborn
+tqdm
