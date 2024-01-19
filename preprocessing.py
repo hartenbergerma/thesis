@@ -1,10 +1,8 @@
+import torch
+import numpy as np
 import spectral as sp
 from scipy.ndimage import convolve1d
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from spectral import BandInfo
+
 
 def get_array(img):
     '''
@@ -12,20 +10,20 @@ def get_array(img):
     input:
         img: image to convert, SpyFile or array-like
     output:
-        image as numpy array
+        image as numpy array as float32
     '''
     if isinstance(img, np.ndarray):
-        return img
+        return img.astype(np.float32)
     if isinstance(img, sp.io.bilfile.BilFile):
-        img = img.asarray()
+        img = img.asarray().astype(np.float32)
     else:
         try:
-            img = np.asarray(img)
+            img = np.asarray(img).astype(np.float32)
         except:
             raise ValueError("Unsupported input type")
     return img
 
-def project_img(img, white_ref, dark_ref):
+def project_img(img, white_ref, dark_ref, device="cpu"):
     '''
     Project the image onto the subspace orthogonal to the illumination spectrum.
     input:
@@ -43,9 +41,18 @@ def project_img(img, white_ref, dark_ref):
     E = smooth_spectral(E, 5)
     # get mapping to subspace orthogonal to E
     P_E = np.eye(E.shape[0]) - np.outer(E, E)/np.dot(E, E)
+    
     # apply mapping to data
-    # R_E = np.einsum('ij,klj->kli', P_E, R) 
-    R_E = np.einsum('ij,...j->...i', P_E, R) 
+    # create torch tensors and move to gpu
+    R = torch.from_numpy(R).to(device).float()
+    P_E = torch.from_numpy(P_E).to(device).float()
+
+    # R_E = np.einsum('ij,klj->kli', P_E, R)
+    R_E = torch.einsum('ij,...j->...i', P_E, R) 
+
+    # convert back to numpy array
+    R_E = R_E.cpu().numpy()
+
     return R_E
 
 def calibrate_img(img, white_ref, dark_ref):
@@ -122,8 +129,8 @@ def l1_normalize(img):
         image as np.array
     '''
     img = get_array(img)
-    img = np.divide(img, np.linalg.norm(img, ord=1, axis=-1, keepdims=True))
-    return img
+    img_norm = np.divide(img, np.linalg.norm(img, ord=1, axis=-1, keepdims=True))
+    return img_norm
 
 def normalize_bands_std(img, class_wise=False, gt_map=None):
     '''
@@ -157,6 +164,32 @@ def smooth_spectral(img, window_size=5):
     kernel = np.ones(window_size)/window_size
     img_smooth = convolve1d(img, kernel, mode='nearest', axis=-1)
     return img_smooth
+
+def bands_lin_interpolation(spectr, bands_old, range_new):
+    """
+    interpolate spectrogram values to new bands
+    input:  spectr, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+            bands_old, bands of the original spectrogram
+            range_new, new bands range
+    output: mu_new, dictionary with interpolated spectrogram values
+            bands_new, new bands with stepsize 1nm
+    """
+    spectr = get_array(spectr)
+    bands_new = np.arange(range_new[0], range_new[1] + 1)
+    if bands_old[0] > bands_new[0] or bands_old[-1] < bands_new[-1]:
+        raise ValueError("Interpolation range is out of bounds")
+    if spectr.ndim == 1:
+        spectr_new = np.interp(bands_new, bands_old, spectr)
+    if spectr.ndim == 2:
+        spectr_new = np.zeros((spectr.shape[0], bands_new.shape[0]))
+        for i in range(spectr.shape[0]):
+            spectr_new[i,:] = np.interp(bands_new, bands_old, spectr[i,:])
+    if spectr.ndim == 3:
+        spectr_new = np.zeros((spectr.shape[0], spectr.shape[1], bands_new.shape[0]))
+        for i in range(spectr.shape[0]):
+            for j in range(spectr.shape[1]):
+                spectr_new[i,j,:] = np.interp(bands_new, bands_old, spectr[i,j,:])
+    return spectr_new, bands_new
 
 def to_absorbance(img):
     '''

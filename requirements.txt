@@ -9,3 +9,5 @@ cvxpy
 scikit_learn
 seaborn
 tqdm
+scikit-image
+torch

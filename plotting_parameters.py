@@ -115,7 +115,7 @@ def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5)):
             raise ValueError("bands must be specified if img is not a spectral.ImageArray")
 
     img = get_array(img)
-    gt_map = get_array(gt_map)
+    gt_map = gt_map.asarray()
 
     class_labels = ["Not labled", "Normal", "Tumor", "Hypervasculized", "Background"]
     class_ids = [1, 2, 3]
@@ -184,7 +184,7 @@ def plot_img(img, gt_map=None, class_labels=None, class_colors=None, bands=[109,
     fig, ax = plt.subplots(figsize=figsize)
     ax.imshow(img_rgb)
     if gt_map is not None:
-        gt_map = get_array(gt_map)
+        gt_map = gt_map.asarray()
         class_ids = np.unique(gt_map)
         if class_labels is None:
             raise ValueError("class_labels must be provided when gt_map is provided")
@@ -216,7 +216,7 @@ def plot_class_dist(img, gt_map, bands, class_ids, class_labels, class_colors, f
         ax: axis handle to the plot
     '''
     img = get_array(img)
-    gt_map = get_array(gt_map)
+    gt_map = gt_map.asarray()
 
     fig, ax = plt.subplots(figsize=figsize)
     for class_id in class_ids:
