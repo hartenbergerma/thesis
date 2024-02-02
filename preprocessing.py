@@ -55,6 +55,37 @@ def project_img(img, white_ref, dark_ref, device="cpu"):
 
     return R_E
 
+def project_absorbance(abs, endmembers_proj, endmembers_unmix, device="cpu"):
+    '''
+    Project the image and endmembers_unmix onto the subspace orthogonal to the spectra in endmembers_proj.
+    input:
+        abs: absorbance array to project, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+        endmembers: endmember spectra, shape (n, k), where n is the number of endmembers
+    output:
+        projected absorbance array perpendicular to all spectra, np.array
+        projected endmembers_unmix, np.array
+    '''
+    P = np.eye(endmembers_proj.shape[1]) - endmembers_proj.T @ np.linalg.pinv(endmembers_proj).T
+    # convert to torch tensors
+    P = torch.from_numpy(P).to(device).float()
+    abs = torch.from_numpy(abs).to(device).float()
+    endmembers_unmix = torch.from_numpy(endmembers_unmix).to(device).float()
+    # project data
+    abs_proj = torch.einsum('ik,...k->...i', P, abs).cpu().numpy()
+    endmembers_unmix_proj = torch.einsum('ik,nk->ni', P, endmembers_unmix).cpu().numpy()
+    return abs_proj, endmembers_unmix_proj
+
+def cosine_similarity(abs, spectr):
+    '''
+    Calculate the cosine similarity between the absorbance and the endmember spectra.
+    input:
+        abs: absorbance array, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+        spectr: endmember spectra, shape (n, k), where n is the number of endmembers
+    output:
+        cosine similarity, np.array of shape (...)
+    '''
+    return np.einsum("...k,k->...", abs, spectr) / (np.linalg.norm(abs, axis=2) * np.linalg.norm(spectr))
+
 def calibrate_img(img, white_ref, dark_ref):
     '''
     Calibrate the image using the white and dark references.

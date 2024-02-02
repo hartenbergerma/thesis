@@ -66,11 +66,13 @@ def get_extinctions(band_range):
     extinction_dict['hbo2'] = hbo2
 
     # water
-    water, _ = bands_lin_interpolation(*read_spectrum('water_600_1050.txt'), band_range)
+    water_1, _ = bands_lin_interpolation(*read_spectrum('water_380_700.txt'), [380,725])
+    water_2, _ = bands_lin_interpolation(*read_spectrum('water_600_1050.txt'), [726,1050])
+    water, _ = bands_lin_interpolation(np.concatenate((water_1,water_2*2.3025851)), np.arange(380,1051), band_range)
     extinction_dict['water'] = water
 
     # fat
     fat, _ = bands_lin_interpolation(*read_spectrum('fat_429_1098.txt'), band_range)
-    extinction_dict['fat'] = fat / 100
+    extinction_dict['fat'] = fat /100
 
     return extinction_dict

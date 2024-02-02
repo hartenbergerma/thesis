@@ -11,3 +11,5 @@ seaborn
 tqdm
 scikit-image
 torch
+cvxopt
+wxPython
