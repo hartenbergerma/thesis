@@ -26,31 +26,31 @@ def get_extinctions(band_range):
 
     # cytochrome c oxidised
     cyt_c_ox, _ = bands_lin_interpolation(*read_spectrum('cyt_c_ox_500_1000.txt'), band_range)
-    extinction_dict['cyt_c_ox'] = cyt_c_ox * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_c_ox'] = cyt_c_ox * 2.3025851 # to base e
     # cytochrome c reduced
     cyt_c_red, _ = bands_lin_interpolation(*read_spectrum('cyt_c_red_500_1000.txt'), band_range)
-    extinction_dict['cyt_c_red'] = cyt_c_red * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_c_red'] = cyt_c_red * 2.3025851 # to base e
     # cytochrome c difference
     cyt_c_diff = cyt_c_ox - cyt_c_red
-    extinction_dict['cyt_c_diff'] = cyt_c_diff * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_c_diff'] = cyt_c_diff * 2.3025851 # to base e
     # cytochrome b oxidised
     cyt_b_ox, _ = bands_lin_interpolation(*read_spectrum('cyt_b_ox_402_997.txt'), band_range)
-    extinction_dict['cyt_b_ox'] = cyt_b_ox * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_b_ox'] = cyt_b_ox * 2.3025851 # to base e
     # cytochrome b reduced
     cyt_b_red, _ = bands_lin_interpolation(*read_spectrum('cyt_b_red_402_997.txt'), band_range)
-    extinction_dict['cyt_b_red'] = cyt_b_red * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_b_red'] = cyt_b_red * 2.3025851 # to base e
     # cytochrome b difference
     cyt_b_diff = cyt_b_ox - cyt_b_red
-    extinction_dict['cyt_b_diff'] = cyt_b_diff * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_b_diff'] = cyt_b_diff * 2.3025851 # to base e
     # cytochrome oxibase oxidised
     cyt_oxi_ox, _ = bands_lin_interpolation(*read_spectrum('cyt_oxi_ox_520_999.txt'), band_range)
-    extinction_dict['cyt_oxi_ox'] = cyt_oxi_ox * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_oxi_ox'] = cyt_oxi_ox * 2.3025851 # to base e
     # cytochrome oxibase reduced
     cyt_oxi_red, _ = bands_lin_interpolation(*read_spectrum('cyt_oxi_red_520_999.txt'), band_range)
-    extinction_dict['cyt_oxi_red'] = cyt_oxi_red * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_oxi_red'] = cyt_oxi_red * 2.3025851 # to base e
     # cytochrome oxibase difference
     cyt_oxi_diff = cyt_oxi_ox - cyt_oxi_red
-    extinction_dict['cyt_oxi_diff'] = cyt_oxi_diff * 2.3025851 # absorption to extinction
+    extinction_dict['cyt_oxi_diff'] = cyt_oxi_diff * 2.3025851 # to base e
 
     # hemoglobin
     hb_1, _ = bands_lin_interpolation(*read_spectrum('hb_450_630.txt'),[450,630])
@@ -66,9 +66,9 @@ def get_extinctions(band_range):
     extinction_dict['hbo2'] = hbo2
 
     # water
-    water_1, _ = bands_lin_interpolation(*read_spectrum('water_380_700.txt'), [380,725])
-    water_2, _ = bands_lin_interpolation(*read_spectrum('water_600_1050.txt'), [726,1050])
-    water, _ = bands_lin_interpolation(np.concatenate((water_1,water_2*2.3025851)), np.arange(380,1051), band_range)
+    water_1, _ = bands_lin_interpolation(*read_spectrum('water_380_727.txt'), [380,600])
+    water_2, _ = bands_lin_interpolation(*read_spectrum('water_600_1050.txt'), [601,1050])
+    water, _ = bands_lin_interpolation(np.concatenate((water_1/100,water_2*2.3025851)), np.arange(380,1051), band_range)
     extinction_dict['water'] = water
 
     # fat
