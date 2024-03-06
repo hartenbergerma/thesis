@@ -59,7 +59,7 @@ def plot_ref_half():
     plt.show()
 
 
-def plot_spectrum(spectr, wavelengths, fig, ax, legend=False, nspectr=None):
+def plot_spectrum(spectr, wavelengths, fig, ax, legend=False, nspectr=None, legend_loc='upper left'):
     '''
     Plot the spectra of the pixels in spectr. The number of spectra to plot can be specified with nspectr.
     If nspectr is None, all spectra are plotted, otherwise the spectra are evenly spaced.
@@ -90,12 +90,17 @@ def plot_spectrum(spectr, wavelengths, fig, ax, legend=False, nspectr=None):
         sm = plt.cm.ScalarMappable(cmap=tum_cmap, norm=plt.Normalize(0, nspectr - 1))
         sm.set_array(np.arange(0, nspectr))  # Specify the array directly
         fig.tight_layout()
-        cbar_ax = ax.inset_axes([0.65, 0.9, 0.3, 0.05])
+        if legend_loc == 'upper left':
+            cbar_ax = ax.inset_axes([0.05, 0.9, 0.3, 0.05])
+        elif legend_loc == 'upper right':
+            cbar_ax = ax.inset_axes([0.65, 0.9, 0.3, 0.05])
+        else:
+            raise ValueError("legend_loc must be 'upper left' or 'upper right'")
         cbar = fig.colorbar(sm, cax=cbar_ax, orientation='horizontal')
         cbar.ax.set_xticks([])
         cbar.set_label("Pixel \n Spectra")
 
-def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5)):
+def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5), legend_loc='upper left'):
     '''
     Plot the spectra of the pixels in the classes Normal, Tumor, and Hypervascularized of the ground truth map.
     input:
@@ -126,7 +131,7 @@ def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5)):
         class_pixels = img[mask]
         if len(mask[0]) == 0: 
             continue
-        plot_spectrum(class_pixels, bands, fig=fig, ax=axs[i], legend=True, nspectr=nspectr)
+        plot_spectrum(class_pixels, bands, fig=fig, ax=axs[i], legend=True, nspectr=nspectr, legend_loc=legend_loc)
         axs[i].set_title(class_labels[class_id])
 
     return fig, axs
@@ -202,6 +207,7 @@ def plot_img(img, gt_map=None, class_labels=None, class_colors=None, bands=[109,
             img_rgb = np.where(overlay,
                         np.array(color),
                         img_rgb)
+            ax.plot([],[], label=class_labels[class_id], color=class_colors[class_id])
     ax.imshow(img_rgb, aspect='equal', vmin=0, vmax=np.percentile(img_rgb, 50))
     ax.axis('off')
     if legend:
