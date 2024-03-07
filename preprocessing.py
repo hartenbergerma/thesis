@@ -86,6 +86,17 @@ def cosine_similarity(abs, spectr):
     '''
     return np.einsum("...k,k->...", abs, spectr) / (np.linalg.norm(abs, axis=2) * np.linalg.norm(spectr))
 
+def similarity(abs, spectr):
+    '''
+    Calculate the similarity between the absorbance and the endmember spectra.
+    input:
+        abs: absorbance array, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+        spectr: endmember spectra, shape (n, k), where n is the number of endmembers
+    output:
+        similarity, np.array of shape (...)
+    '''
+    return np.einsum("...k,k->...", abs, spectr)
+
 def calibrate_img(img, white_ref, dark_ref):
     '''
     Calibrate the image using the white and dark references.

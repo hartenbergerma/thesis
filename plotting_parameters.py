@@ -6,6 +6,9 @@ import os
 import sys
 from preprocessing import get_array, smooth_spectral
 import matplotlib.colors as mcolors
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 
 tum_blue_brand ='#3070b3'
 tum_blue_dark = '#072140' #
@@ -250,3 +253,133 @@ def plot_class_dist(img, gt_map, bands, class_ids, class_labels, class_colors, f
         ax.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc=legend_loc, handlelength=0.8, borderaxespad=0.)
         # ax.legend(loc=legend_loc, handlelength=0.8, borderaxespad=0.)
     return fig, ax
+
+def plot_pca(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend_loc='upper right'):
+    """
+    Plot the PCA projection of the input data onto 2D space, with the data points colored according to the ground truth map.
+    input:  spectr, shape (...,k) where k is the number of features
+            gt_map, shape (...,1) where the last dimension contains the ground truth labels
+            class_labels, list of strings containing the class labels
+            mode, string, either 'equal' or 'all', determines the number of samples to be taken from each class
+            figsize, tuple, the size of the figure
+            legend_loc, string, the location of the legend
+    output: fig, axs, the figure and axes objects of the plot
+    """
+
+    np.random.seed(0)
+    N = spectr[np.where(gt_map.asarray()[:,:,0] == 1)]
+    T = spectr[np.where(gt_map.asarray()[:,:,0] == 2)]
+    B = spectr[np.where(gt_map.asarray()[:,:,0] == 3)]
+    if mode == 'equal':
+        np.random.seed(0)
+        nsamples = min(N.shape[0], T.shape[0], B.shape[0])
+        idx_N = np.random.choice(N.shape[0], nsamples, replace=False)
+        N = N[idx_N]
+        idx_T = np.random.choice(T.shape[0], nsamples, replace=False)
+        T = T[idx_T]
+        idx_B = np.random.choice(B.shape[0], nsamples, replace=False)
+        B = B[idx_B]
+        Y = np.repeat([1, 2, 3], nsamples)
+    else:
+        Y = np.concatenate((np.ones(N.shape[0]), 2*np.ones(T.shape[0]), 3*np.ones(B.shape[0])))
+    NTB = np.concatenate((N, T, B))
+
+    pca = PCA(n_components=2)
+    NTB_pca = pca.fit_transform(NTB)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    class_colors = ["white", tum_blue_dark_2, tum_orange, tum_red, tum_grey_5]
+    for i in range(1,4):
+        ax.scatter(NTB_pca[Y==i, 0], NTB_pca[Y==i, 1], label=class_labels[i], color=class_colors[i])
+    # ax.set_title('PCA')
+    if legend_loc is not None:
+        ax.legend(loc=legend_loc)
+    ax.set_xlabel('PCA component 1')
+    ax.set_ylabel('PCA component 2')
+
+    return fig, ax
+
+
+def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(10, 4), legend_loc='upper right'):
+    """
+    Plot the t-SNE projection of the input data onto 2D space, with the data points colored according to the ground truth map.
+    input:  spectr, shape (...,k) where k is the number of features
+            gt_map, shape (...,1) where the last dimension contains the ground truth labels
+            class_labels, list of strings containing the class labels
+            mode, string, either 'equal' or 'all', determines the number of samples to be taken from each class#
+            figsize, tuple, the size of the figure
+            legend_loc, string, the location of the legend
+    output: fig, axs, the figure and axes objects of the plot
+    """
+
+    np.random.seed(0)
+    N = spectr[np.where(gt_map.asarray()[:,:,0] == 1)]
+    T = spectr[np.where(gt_map.asarray()[:,:,0] == 2)]
+    B = spectr[np.where(gt_map.asarray()[:,:,0] == 3)]
+    if mode == 'equal':
+        np.random.seed(0)
+        nsamples = min(N.shape[0], T.shape[0], B.shape[0])
+        idx_N = np.random.choice(N.shape[0], nsamples, replace=False)
+        N = N[idx_N]
+        idx_T = np.random.choice(T.shape[0], nsamples, replace=False)
+        T = T[idx_T]
+        idx_B = np.random.choice(B.shape[0], nsamples, replace=False)
+        B = B[idx_B]
+        Y = np.repeat([1, 2, 3], nsamples)
+    else:
+        Y = np.concatenate((np.ones(N.shape[0]), 2*np.ones(T.shape[0]), 3*np.ones(B.shape[0])))
+    NTB = np.concatenate((N, T, B))
+
+    tsne = TSNE(n_components=2)
+    NTB_tsne = tsne.fit_transform(NTB)
+
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    class_colors = ["white", tum_blue_dark_2, tum_orange, tum_red, tum_grey_5]
+    for i in range(1,4):
+        ax.scatter(NTB_tsne[Y==i, 0], NTB_tsne[Y==i, 1], label=class_labels[i], color=class_colors[i])
+    # ax.set_title('t-SNE')
+    if legend_loc is not None:
+        ax.legend(loc=legend_loc)
+    ax.set_xlabel('t-SNE component 1')
+    ax.set_ylabel('t-SNE component 2')
+
+    return fig, ax
+
+def plot_concentrations(c, endmember_labels=None, figsize=(5.8,2.3)):
+    c = (c - np.min(c, axis=(0,1), keepdims=True))/(np.max(c, axis=(0,1), keepdims=True) - np.min(c, axis=(0,1), keepdims=True))
+    N = c.shape[2]
+    ncol = 6
+    if N < ncol-1:
+        fig, axs = plt.subplots(1, N, figsize=figsize)
+        for i in range(N):
+            axs[i].imshow(c[:,:,i], cmap=tum_cmap)
+            axs[i].set_title(endmember_labels[i])
+            axs[i].axis("off")
+        # add colorbar in the last subplot
+        axs[-1].axis("off")
+        divider = make_axes_locatable(axs[-1])
+        # cax = divider.append_axes("left", size="10%")
+        cax = axs[-1,-1].inset_axes([0.1, 0.15, 0.2, 0.7])
+        norm = mpl.colors.Normalize(vmin=0, vmax=1)
+        sm = plt.cm.ScalarMappable(cmap=tum_cmap, norm=norm)
+        sm.set_array([])
+        fig.colorbar(sm, cax=cax, label='Similarity')
+    else:
+        fig, axs = plt.subplots(int(np.ceil(N/ncol)), ncol, figsize=figsize)
+        for i in range(int(np.ceil(N/ncol))*ncol):
+            if i < N:
+                axs[i//ncol,i%ncol].imshow(c[:,:,i], cmap=tum_cmap)
+                axs[i//ncol,i%ncol].set_title(endmember_labels[i])
+            axs[i//ncol,i%ncol].axis("off")
+        # add colorbar in the last subplot
+        axs[-1,-1].axis("off")
+        divider = make_axes_locatable(axs[-1,-1])
+        # cax = divider.append_axes("left", size="10%")
+        cax = axs[-1,-1].inset_axes([0.1, 0.15, 0.2, 0.7])
+        norm = mpl.colors.Normalize(vmin=0, vmax=1)
+        sm = plt.cm.ScalarMappable(cmap=tum_cmap, norm=norm)
+        sm.set_array([])
+        fig.colorbar(sm, cax=cax, label='Similarity')
+
+    _ = plt.tight_layout()
+    return fig, axs
