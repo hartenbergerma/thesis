@@ -210,11 +210,11 @@ def plot_img(img, gt_map=None, class_labels=None, class_colors=None, bands=[109,
             img_rgb = np.where(overlay,
                         np.array(color),
                         img_rgb)
-            ax.plot([],[], label=class_labels[class_id], color=class_colors[class_id])
+            ax.scatter([],[], label=class_labels[class_id], color=class_colors[class_id])
     ax.imshow(img_rgb, aspect='equal', vmin=0, vmax=np.percentile(img_rgb, 50))
     ax.axis('off')
     if legend:
-        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., markerscale=10)
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., markerscale=1)
     return fig, ax
 
 def plot_class_dist(img, gt_map, bands, class_ids, class_labels, class_colors, figsize=(5,4), legend_loc='upper left'):
@@ -346,35 +346,42 @@ def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(10, 4), legen
     return fig, ax
 
 def plot_concentrations(c, endmember_labels=None, figsize=(5.8,2.3)):
+    '''
+    Plot the concentration maps of the endmembers. The concentration maps are normalized to the range [0,1], and the colorbar is added to the last subplot.
+    input:
+        c: np.array, shape (L, M, N) where N is the number of endmembers
+        endmember_labels: list of strings containing the endmember labels
+        figsize: tuple, the size of the figure
+    output:
+        fig: figure handle to the plot
+        axs: axes handle to the plot
+    '''
     c = (c - np.min(c, axis=(0,1), keepdims=True))/(np.max(c, axis=(0,1), keepdims=True) - np.min(c, axis=(0,1), keepdims=True))
     N = c.shape[2]
     ncol = 6
+    nrow = int(np.ceil((N+1)/ncol))
     if N < ncol-1:
-        fig, axs = plt.subplots(1, N, figsize=figsize)
+        fig, axs = plt.subplots(1, N+1, figsize=figsize)
         for i in range(N):
             axs[i].imshow(c[:,:,i], cmap=tum_cmap)
             axs[i].set_title(endmember_labels[i])
             axs[i].axis("off")
         # add colorbar in the last subplot
         axs[-1].axis("off")
-        divider = make_axes_locatable(axs[-1])
-        # cax = divider.append_axes("left", size="10%")
-        cax = axs[-1,-1].inset_axes([0.1, 0.15, 0.2, 0.7])
+        cax = axs[-1].inset_axes([0.1, 0.15, 0.2, 0.7])
         norm = mpl.colors.Normalize(vmin=0, vmax=1)
         sm = plt.cm.ScalarMappable(cmap=tum_cmap, norm=norm)
         sm.set_array([])
         fig.colorbar(sm, cax=cax, label='Similarity')
     else:
-        fig, axs = plt.subplots(int(np.ceil(N/ncol)), ncol, figsize=figsize)
-        for i in range(int(np.ceil(N/ncol))*ncol):
+        fig, axs = plt.subplots(nrow, ncol, figsize=figsize)
+        for i in range(nrow*ncol):
             if i < N:
                 axs[i//ncol,i%ncol].imshow(c[:,:,i], cmap=tum_cmap)
                 axs[i//ncol,i%ncol].set_title(endmember_labels[i])
             axs[i//ncol,i%ncol].axis("off")
         # add colorbar in the last subplot
         axs[-1,-1].axis("off")
-        divider = make_axes_locatable(axs[-1,-1])
-        # cax = divider.append_axes("left", size="10%")
         cax = axs[-1,-1].inset_axes([0.1, 0.15, 0.2, 0.7])
         norm = mpl.colors.Normalize(vmin=0, vmax=1)
         sm = plt.cm.ScalarMappable(cmap=tum_cmap, norm=norm)
@@ -383,3 +390,18 @@ def plot_concentrations(c, endmember_labels=None, figsize=(5.8,2.3)):
 
     _ = plt.tight_layout()
     return fig, axs
+
+def clip_data(data, lower=1, upper=99):
+    '''
+    Clip the data to the specified percentiles along the first two axes.
+    input:
+        data: np.array, shape (N, M, ...)
+        lower: int, lower percentile
+        upper: int, upper percentile
+    output:
+        data: np.array, shape (N, M, ...)
+    '''
+    lower_clip = np.percentile(data, lower, axis=(0,1), keepdims=True)
+    upper_clip = np.percentile(data, upper, axis=(0,1), keepdims=True)
+    data = np.clip(data, lower_clip, upper_clip)
+    return data

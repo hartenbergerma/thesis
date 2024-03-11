@@ -13,3 +13,5 @@ scikit-image
 torch
 cvxopt
 wxPython
+openpyxl
+pysptools
