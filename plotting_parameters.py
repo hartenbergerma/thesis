@@ -243,7 +243,7 @@ def plot_class_dist(img, gt_map, bands, class_ids, class_labels, class_colors, f
         class_mean = np.mean(img[mask], axis=0)
         ax.plot(bands, class_mean, label=class_labels[class_id], color=class_colors[class_id])
         ax.fill_between(bands, class_mean - class_std, class_mean + class_std, alpha=0.25, color=class_colors[class_id])
-    ax.set_xlim([400, 1000])
+    ax.set_xlim([bands[0], bands[-1]])
     ax.set_ylabel('Intensity')
     ax.set_xlabel('Wavelength (nm)')
     if legend_loc is not None:
@@ -265,11 +265,12 @@ def plot_pca(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend_
             legend_loc, string, the location of the legend
     output: fig, axs, the figure and axes objects of the plot
     """
+    gt_map = get_array(gt_map)
 
     np.random.seed(0)
-    N = spectr[np.where(gt_map.asarray()[:,:,0] == 1)]
-    T = spectr[np.where(gt_map.asarray()[:,:,0] == 2)]
-    B = spectr[np.where(gt_map.asarray()[:,:,0] == 3)]
+    N = spectr[np.where(gt_map.squeeze() == 1)]
+    T = spectr[np.where(gt_map.squeeze() == 2)]
+    B = spectr[np.where(gt_map.squeeze() == 3)]
     if mode == 'equal':
         np.random.seed(0)
         nsamples = min(N.shape[0], T.shape[0], B.shape[0])
@@ -300,7 +301,7 @@ def plot_pca(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend_
     return fig, ax
 
 
-def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(10, 4), legend_loc='upper right'):
+def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend_loc='upper right'):
     """
     Plot the t-SNE projection of the input data onto 2D space, with the data points colored according to the ground truth map.
     input:  spectr, shape (...,k) where k is the number of features
@@ -311,11 +312,12 @@ def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(10, 4), legen
             legend_loc, string, the location of the legend
     output: fig, axs, the figure and axes objects of the plot
     """
+    gt_map = get_array(gt_map)
 
     np.random.seed(0)
-    N = spectr[np.where(gt_map.asarray()[:,:,0] == 1)]
-    T = spectr[np.where(gt_map.asarray()[:,:,0] == 2)]
-    B = spectr[np.where(gt_map.asarray()[:,:,0] == 3)]
+    N = spectr[np.where(gt_map.squeeze() == 1)]
+    T = spectr[np.where(gt_map.squeeze() == 2)]
+    B = spectr[np.where(gt_map.squeeze() == 3)]
     if mode == 'equal':
         np.random.seed(0)
         nsamples = min(N.shape[0], T.shape[0], B.shape[0])
