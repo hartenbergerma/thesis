@@ -1,8 +1,9 @@
 import torch
 import numpy as np
 import spectral as sp
+import scipy
 from scipy.ndimage import convolve1d
-
+from pysptools.detection.detect import CEM
 
 def get_array(img):
     '''
@@ -74,6 +75,54 @@ def project_absorbance(abs, endmembers_proj, endmembers_unmix, device="cpu"):
     abs_proj = torch.einsum('ik,...k->...i', P, abs).cpu().numpy()
     endmembers_unmix_proj = torch.einsum('ik,nk->ni', P, endmembers_unmix).cpu().numpy()
     return abs_proj, endmembers_unmix_proj
+
+def osp(abs, endmembers_proj, endmember_target, device="cpu"):
+    '''
+    Project the image spectra in the subspace orthogonal to the spectra in endmembers_proj.
+    input:
+        abs: absorbance array to project, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+        endmembers_proj: endmember spectra to remove, shape (n, k), where n is the number of endmembers
+        endmember_target: target endmember to detect, shape (k,)
+    output:
+        abs_proj: target heatmap, shape (...)
+    '''
+    P = np.eye(endmembers_proj.shape[1]) - endmembers_proj.T @ np.linalg.pinv(endmembers_proj).T
+    # convert to torch tensors
+    P = torch.from_numpy(P).to(device).float()
+    abs = torch.from_numpy(abs).to(device).float()
+    s = torch.from_numpy(endmember_target).to(device).float()
+    # project data
+    abs_proj = torch.einsum('ik,...k->...i', P, abs)
+    # calculate target heatmap
+    abs_proj = torch.einsum('k,...k->...', s, abs_proj).cpu().numpy()
+    return abs_proj
+
+def icem(spectr, endmember, lmda=0):
+    '''
+    Improved constrained energy minimization (ICEM) algorithm.
+    input:
+        spectr: image to unmix, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
+        endmember: endmember to unmix, shape (k,)
+        lmda: regularization parameter, float
+    output:
+        heatmap, np.array
+    '''
+    input_shape = spectr.shape
+    M = spectr.reshape(-1, input_shape[-1])
+    t = endmember
+
+    def corr(M):
+        p, N = M.shape
+        return np.dot(M, M.T) / N
+
+    N, p = M.shape
+    R_hat = corr(M.T) + lmda * np.eye(p)
+    Rinv = scipy.linalg.inv(R_hat)
+    denom = np.dot(t.T, np.dot(Rinv, t))
+    t_Rinv = np.dot(t.T, Rinv)
+    y = np.dot(t_Rinv , M[0:,:].T) / denom
+
+    return y.reshape(input_shape[:-1])
 
 def cosine_similarity(abs, spectr):
     '''
