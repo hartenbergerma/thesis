@@ -197,7 +197,7 @@ def plot_img(img, gt_map=None, class_labels=None, class_colors=None, bands=[109,
 
     fig, ax = plt.subplots()
     if gt_map is not None:
-        gt_map = gt_map.asarray()
+        gt_map = get_array(gt_map).astype(int)
         class_ids = np.unique(gt_map)
         if class_labels is None or class_colors is None:
             raise ValueError("class_labels and class_colors must be provided when gt_map is provided")
