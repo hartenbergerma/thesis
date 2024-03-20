@@ -337,8 +337,8 @@ def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend
 
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     class_colors = ["white", tum_blue_dark_2, tum_orange, tum_red, tum_grey_5]
-    for i in range(1,4):
-        ax.scatter(NTB_tsne[Y==i, 0], NTB_tsne[Y==i, 1], label=class_labels[i], color=class_colors[i])
+    for i in range(1,int(max(gt_map.flatten()))+1):
+        ax.scatter(NTB_tsne[Y==i, 0], NTB_tsne[Y==i, 1], label=class_labels[i], color=class_colors[i], s=1)
     # ax.set_title('t-SNE')
     if legend_loc is not None:
         ax.legend(loc=legend_loc)
