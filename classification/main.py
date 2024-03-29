@@ -1,19 +1,17 @@
 import os
-import pytorch_lightning as L
-import matplotlib.pyplot as plt
 import torch
 import numpy as np
 import spectral as sp
+import pytorch_lightning as L
+import matplotlib.pyplot as plt
 
 
 from tqdm import tqdm
-from torch import nn, Tensor
-from torchvision import transforms
-from lightning.pytorch import Trainer
-from lightning.pytorch.loggers import TensorBoardLogger
-from hyperspectral_transforms import *
+from torch import nn
 from model import ClassificationModel
-from dataloader import get_dataloaders, img_test_dataloader
+from dataloader import HelicoidDataModule
+from hyperspectral_transforms import *
+from lightning.pytorch.loggers import TensorBoardLogger
 
 
 def train(model, train_loader, val_loader, log_dir, max_epochs):
@@ -22,11 +20,6 @@ def train(model, train_loader, val_loader, log_dir, max_epochs):
     trainer.fit(model, train_loader, val_loader)
     trainer.save_checkpoint("./classification/model.ckpt")
     return model
-
-def test(model, test_loader):
-    # load the model from the checkpoint
-    trainer = L.Trainer(devices=1)
-    trainer.test(model, test_loader)
 
 
 def visualize_weights(model):
@@ -60,13 +53,14 @@ def visualize_weights(model):
 
 def test_img(model, data_folder, files, transform=None):
     # get the model prediction
-    dataloader = img_test_dataloader(data_folder=data_folder, files=files, transform=transform)
+    dataloader = get_dataloader(data_folders=[data_folder], files=files, transform=transform, mode="test")
     y_pred = []
     for x, y in tqdm(dataloader):
         y_pred.append(model(x).detach().numpy())
     y_pred = np.concatenate(y_pred, axis=0)
-    gt_map = np.load(os.path.join(data_folder, "labels_data.npy"))
-    img_shape = np.load(os.path.join(data_folder, "img_shape.npy"))
+    gt_map = np.load(os.path.join(data_folder, "gtMap.npy"))
+    # img_shape = np.load(os.path.join(data_folder, "img_shape.npy"))
+    img_shape = gt_map.shape[:2]
 
 
     pred = np.argmax(y_pred, axis=-1)
@@ -112,25 +106,30 @@ def test_img(model, data_folder, files, transform=None):
             
 
 def main():
-    # data_files = ["heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy", "pca_data.npy"] # add LMM
-    data_files = ["preprocessed_data.npy"]
-    train_loader, val_loader, test_loader = get_dataloaders(data_folder='own_labels/normal_tumor_blood', files=data_files, batch_size=64, transform=ToTensor())
+    train_data_folders = ['own_labels/normal_tumor_blood/' + folder for folder in ["008-01", "008-02", "010-03", "012-02", "015-01", "016-04", "016-05", "017-01", "020-01"]]#, "039-01"]]
+    val_data_folders = ['own_labels/normal_tumor_blood/012-01']
+    # data_files = ["preprocessed.npy", "heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]#, "pca_data.npy"] # add LMM
+    data_files = ["preprocessed.npy"]
+    train_loader = get_dataloader(data_folders=train_data_folders, files=data_files, batch_size=64, transform=ToTensor())
+    val_loader = get_dataloader(data_folders=val_data_folders, files=data_files, batch_size=64, transform=ToTensor(), mode='val')
     # get first batch
     x, y = next(iter(train_loader))
     print(x.shape, y.shape)
 
-    # model = ClassificationModel(x.shape[1], 32, 3, 8, [1/0.47, 1/0.28, 1/0.25])
-    model = ClassificationModel(x.shape[1], 32, 3, 1, [1/0.55, 1/0.2, 1/0.25])
+    # # model = ClassificationModel(x.shape[1], 32, 3, 8, [1/0.47, 1/0.28, 1/0.25])
+    # # model = ClassificationModel(x.shape[1], 24, 3, 1, [1/0.47, 1/0.29, 1/0.25], weight_decay=1e-3)
+    # # # model = ClassificationModel(x.shape[1], 24, 2, 1, [1/0.47, 1/0.29, 1/0.25], weight_decay=1e-3)
+    model = ClassificationModel(x.shape[1], 32, 3, 8, [1/0.47, 1/0.29, 1/0.25], weight_decay=0)
 
-    train(model, train_loader, val_loader, "./classification/tb_logs", max_epochs=10)
+    train(model, train_loader, val_loader, "./classification/tb_logs", max_epochs=40)
 
-    test(model, test_loader)
+    visualize_weights(model)
+    # model = ClassificationModel.load_from_checkpoint("./classification/model.ckpt", input_dim=66, hidden_dim=12, output_dim=3, num_layers=4, loss_weight=[1/29903,1/10199,1/17890])
 
-    # visualize_weights(model)
-    # model = ClassificationModel.load_from_checkpoint("./classification/model_v17_preprocessed.ckpt", input_dim=x.shape[1], hidden_dim=32, output_dim=3, num_layers=8, loss_weight=[1/0.47, 1/0.28, 1/0.25])
-
-    test_img(model, data_folder="own_labels/039-01", files=data_files, transform=ToTensor())
+    # test_img(model, data_folder="own_labels/cem_global/039-01", files=data_files, transform=ToTensor())
 
 if __name__ == "__main__":
     main()
 
+
+# 24, 3,8, lr 1e-5, wd=1e-3
