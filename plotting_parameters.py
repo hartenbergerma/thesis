@@ -197,13 +197,13 @@ def plot_img(img, gt_map=None, class_labels=None, class_colors=None, bands=[109,
 
     fig, ax = plt.subplots()
     if gt_map is not None:
-        gt_map = get_array(gt_map).astype(int)
+        gt_map = get_array(gt_map).astype(int).squeeze()
         class_ids = np.unique(gt_map)
         if class_labels is None or class_colors is None:
             raise ValueError("class_labels and class_colors must be provided when gt_map is provided")
         for class_id in class_ids[class_ids != 0]:
-            mask = np.where(gt_map[:,:,0] == class_id)
-            overlay = np.zeros_like(gt_map[:,:,0])
+            mask = np.where(gt_map == class_id)
+            overlay = np.zeros_like(gt_map)
             overlay[mask] = 1
             overlay = np.repeat(overlay[:, :, np.newaxis], 3, axis=2)
             color = mcolors.hex2color(class_colors[class_id])
@@ -301,7 +301,7 @@ def plot_pca(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend_
     return fig, ax
 
 
-def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend_loc='upper right'):
+def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend_loc='upper right', markerscale=3):
     """
     Plot the t-SNE projection of the input data onto 2D space, with the data points colored according to the ground truth map.
     input:  spectr, shape (...,k) where k is the number of features
@@ -341,7 +341,7 @@ def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend
         ax.scatter(NTB_tsne[Y==i, 0], NTB_tsne[Y==i, 1], label=class_labels[i], color=class_colors[i], s=1)
     # ax.set_title('t-SNE')
     if legend_loc is not None:
-        ax.legend(loc=legend_loc)
+        ax.legend(loc=legend_loc, markerscale=markerscale)
     ax.set_xlabel('t-SNE component 1')
     ax.set_ylabel('t-SNE component 2')
 

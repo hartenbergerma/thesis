@@ -86,41 +86,48 @@ def osp(abs, endmembers_proj, endmember_target, device="cpu"):
     output:
         abs_proj: target heatmap, shape (...)
     '''
-    P = np.eye(endmembers_proj.shape[1]) - endmembers_proj.T @ np.linalg.pinv(endmembers_proj).T
-    # convert to torch tensors
-    P = torch.from_numpy(P).to(device).float()
-    abs = torch.from_numpy(abs).to(device).float()
-    s = torch.from_numpy(endmember_target).to(device).float()
-    # project data
+    # make sure input is torch tensor
+    was_numpy = isinstance(abs, np.ndarray)
+    abs = torch.tensor(abs, device=device).float()
+    endmembers_proj = torch.tensor(endmembers_proj, device=device).float()
+    endmember_target = torch.tensor(endmember_target, device=device).float()
+
+    # perform OSP
+    P = torch.eye(endmembers_proj.shape[1], device=device) - endmembers_proj.T @ torch.pinverse(endmembers_proj).T
     abs_proj = torch.einsum('ik,...k->...i', P, abs)
-    # calculate target heatmap
-    abs_proj = torch.einsum('k,...k->...', s, abs_proj).cpu().numpy()
+    abs_proj = torch.einsum('k,...k->...', endmember_target, abs_proj)
+
+    if was_numpy:
+        abs_proj = abs_proj.cpu().numpy()
+
     return abs_proj
 
-def icem(spectr, endmember, lmda=0):
+def icem(spectr, t, lmda=0, device='cpu'):
     '''
     Improved constrained energy minimization (ICEM) algorithm.
     input:
         spectr: image to unmix, shape (...,k) where k is the number of bands and ... are the spatial or time dimensions
-        endmember: endmember to unmix, shape (k,)
+        t: endmember to unmix, shape (k,)
         lmda: regularization parameter, float
     output:
         heatmap, np.array
     '''
+    was_numpy = isinstance(spectr, np.ndarray)
+    spectr = torch.tensor(spectr, device=device).float()
+    t = torch.tensor(t, device=device).float()
+
     input_shape = spectr.shape
     M = spectr.reshape(-1, input_shape[-1])
-    t = endmember
-
-    def corr(M):
-        p, N = M.shape
-        return np.dot(M, M.T) / N
 
     N, p = M.shape
-    R_hat = corr(M.T) + lmda * np.eye(p)
-    Rinv = scipy.linalg.inv(R_hat)
-    denom = np.dot(t.T, np.dot(Rinv, t))
-    t_Rinv = np.dot(t.T, Rinv)
-    y = np.dot(t_Rinv , M[0:,:].T) / denom
+    R_hat = torch.mm(M.T, M) / N + lmda * torch.eye(p, device=device)
+    Rinv = torch.inverse(R_hat)
+    t_Rinv = torch.mv(Rinv.T, t)
+    denom = torch.dot(t, t_Rinv)
+    y = torch.mv(M, t_Rinv) / denom
+
+    if was_numpy:
+        y =  y.cpu().numpy()
 
     return y.reshape(input_shape[:-1])
 

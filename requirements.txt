@@ -15,3 +15,6 @@ cvxopt
 wxPython
 openpyxl
 pysptools
+torchvision
+lightning
+ray[data,train,tune,serve]
