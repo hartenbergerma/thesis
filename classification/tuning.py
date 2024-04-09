@@ -16,13 +16,13 @@ args = parser.parse_args()
 
 
 def train(config, dm):
-    logger = TensorBoardLogger(config["log_dir"], name="my_model2")
-    model = ClassificationModel(input_dim=dm.sample_size(), output_dim=dm.num_classes(), loss_weight=dm.class_distribution(), config=config)
+    logger = TensorBoardLogger(config["log_dir"], name="my_model")
+    model = ClassificationModel(input_dim=dm.sample_size(), output_dim=dm.num_classes(), loss_weight=1/dm.class_distribution(), config=config)
 
-    early_stop_callback = EarlyStopping(monitor="val/val_loss", min_delta=0.0, patience=3, verbose=False, mode="min")
+    early_stop_callback = EarlyStopping(monitor="val/val_loss", min_delta=0.0, patience=5, verbose=False, mode="min")
     trainer = pl.Trainer(logger=logger, max_epochs=config["num_epochs"], devices=1, callbacks=[early_stop_callback])
 
-    trainer.fit(model, dm.train_dataloader(), dm.val_dataloader())
+    trainer.fit(model, dm.train_dataloader(batch_size=config["batch_size"]), dm.val_dataloader())
 
     # log hyperparameters and metrics
     best_val_loss = early_stop_callback.best_score
@@ -32,6 +32,7 @@ def train(config, dm):
         "last_layer_dim": config["last_layer_dim"],
         "lr": config["lr"],
         "weight_decay": config["weight_decay"],
+        "batch_size": config["batch_size"],
     }
     metrics = {"best_val_loss": best_val_loss}
     logger.log_hyperparams(params, metrics)
@@ -48,18 +49,19 @@ def main():
     elif args.mode == "baseline_reduced":
         files = ["preprocessed_reduced"]
 
-    dm = HelicoidDataModule(files=files, fold="fold1")
+    dm = HelicoidDataModule(files=files, fold="fold2")
     dm.setup("fit")
 
     np.random.seed(0)
     for i in range(50):
-        hidden_dim = np.random.randint(4, 40)
-        num_layers = np.random.randint(0, 5)
+        hidden_dim = np.random.randint(4, 64)
+        num_layers = np.random.randint(0, 4)
         last_layer_dim = np.random.randint(4, hidden_dim+1)
-        exp = np.random.uniform(-5, -2)
+        exp = np.random.uniform(-5, -1)
         weight_decay = 10**exp
         exp = np.random.uniform(-6, -4)
         lr = 10**exp
+        batch_size = 2**np.random.randint(5, 7)
 
         config = {
             "hidden_dim": hidden_dim,
@@ -67,8 +69,9 @@ def main():
             "last_layer_dim": last_layer_dim,
             "lr": lr,
             "weight_decay": weight_decay,
-            "num_epochs": 50,
+            "num_epochs": 100,
             "log_dir": args.log_dir,
+            "batch_size": batch_size
         }
 
         print(config)

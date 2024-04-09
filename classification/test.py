@@ -1,16 +1,23 @@
 import os
+import sys
 import json
 import argparse
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
+
 from tqdm import tqdm
 from torch import nn
+from matplotlib.colors import LinearSegmentedColormap
 from model import ClassificationModel
 from dataloader import HelicoidDataModule
 
-from torchmetrics.classification import MulticlassAccuracy, MulticlassRecall, MulticlassPrecision, MulticlassF1Score
+from torchmetrics.classification import MulticlassAccuracy, MulticlassRecall, MulticlassPrecision, MulticlassF1Score, MulticlassAUROC, MulticlassPrecisionRecallCurve
+
+# add parent folder to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from plotting_parameters import *
 
 
 parser = argparse.ArgumentParser()
@@ -49,63 +56,7 @@ def visualize_weights(model, save_dir):
     plt.ylabel("Mean weight magnitude")
     plt.savefig(os.path.join(save_dir, "mean_weights.png"))
 
-# def test_img(model, files, fold, save_dir):
-#     dm_pred = HelicoidDataModule(files=files, fold=fold)
-#     dm_pred.setup("predict")
-#     dataloader = dm_pred.predict_dataloader()
-#     y_pred = []
-#     for x, y in tqdm(dataloader):
-#         y_pred.append(model(x).detach().numpy())
-#     y_pred = np.concatenate(y_pred, axis=0)
-#     gt_map = np.load(os.path.join(data_folder, "gtMap.npy"))
-#     img_shape = gt_map.shape[:2]
-
-
-#     pred = np.argmax(y_pred, axis=-1)
-#     pred_img = pred.reshape(img_shape[0], img_shape[1])
-#     gt_map = gt_map.reshape(img_shape[0], img_shape[1])
-
-#     # get accuracy for each class
-#     classes = {1: "Normal", 2: "Tumor", 3: "Blood"}
-#     for i, c in classes.items():
-#         idx_class = np.where(gt_map == i)
-#         accuracy = (pred_img[idx_class] == i-1).mean()
-#         print(f"Accuracy for {c}: {accuracy}")
-
-#     # visualize the prediction
-#     plt.figure()
-#     im = plt.imshow(pred_img)
-#     plt.colorbar(im)
-#     plt.savefig("./classification/prediction_img.png")
-
-#     # do majority voting within a 4x4 window
-#     window_size = 4
-#     pred_img_padded = np.pad(pred_img, ((window_size//2, window_size//2), (window_size//2, window_size//2)), mode="edge")
-#     pred_img_knn = np.zeros_like(pred_img)
-#     for i in range(window_size//2, img_shape[0]):
-#         for j in range(window_size//2, img_shape[1]):
-#             window = pred_img_padded[i-window_size//2:i+window_size//2+1, j-window_size//2:j+window_size//2+1]
-#             window_class_counts = [np.sum(window == c, axis=(0,1)) for c in range(0,3)]
-#             window_class = np.argmax(window_class_counts)
-#             pred_img_knn[i, j] = window_class
-
-#     # get accuracy for each class after majority voting
-#     for i, c in classes.items():
-#         idx_class = np.where(gt_map == i)
-#         accuracy = (pred_img_knn[idx_class] == i-1).mean()
-#         print(f"Accuracy for {c} after majority voting: {accuracy}")
-
-#     # visualize the prediction after majority voting
-#     plt.figure()
-#     im = plt.imshow(pred_img_knn)
-#     plt.colorbar(im)
-#     plt.savefig("./classification/prediction_img_knn.png")
-
-def metrics(model, files, fold, save_dir):
-    dm_test = HelicoidDataModule(files=files, fold=fold)
-    dm_test.setup("test")
-    dataloader = dm_test.test_dataloader()
-
+def get_predictions(model, dataloader):
     logits = []
     y_true = []
     for x, y in tqdm(dataloader):
@@ -113,7 +64,9 @@ def metrics(model, files, fold, save_dir):
         y_true.append(y.cpu())
     logits = torch.concatenate(logits, axis=0)
     y_true = torch.concatenate(y_true, axis=0)
+    return logits, y_true
 
+def get_metrics(logits, y_true, roc_auc=True):
     accuracy = MulticlassAccuracy(num_classes=4, average=None)
     precision = MulticlassPrecision(num_classes=4, average=None)
     recall = MulticlassRecall(num_classes=4, average=None)
@@ -124,7 +77,7 @@ def metrics(model, files, fold, save_dir):
     recall_macro = MulticlassRecall(num_classes=4, average="macro")
     f1_score_macro = MulticlassF1Score(num_classes=4, average="macro")
 
-    retults = {
+    results = {
         "accuracy": accuracy(logits, y_true).numpy().tolist(),
         "accuracy_macro": accuracy_macro(logits, y_true).numpy().tolist(),
         "precision": precision(logits, y_true).numpy().tolist(),
@@ -132,13 +85,82 @@ def metrics(model, files, fold, save_dir):
         "recall": recall(logits, y_true).numpy().tolist(),
         "recall_macro": recall_macro(logits, y_true).numpy().tolist(),
         "f1_score": f1_score(logits, y_true).numpy().tolist(),
-        "f1_score_macro": f1_score_macro(logits, y_true).numpy().tolist()
+        "f1_score_macro": f1_score_macro(logits, y_true).numpy().tolist(),
     }
+    if roc_auc:
+        roc_auc = MulticlassAUROC(num_classes=4, average=None)
+        roc_auc_macro = MulticlassAUROC(num_classes=4, average="macro")
+        results["roc_auc"] = roc_auc(logits, y_true).numpy().tolist()
+        results["roc_auc_macro"] = roc_auc_macro(logits, y_true).numpy().tolist()
+    return results
+    
 
+def test_img(model, files, fold, save_dir):
+    dm = HelicoidDataModule(files=files, fold=fold)
+    dm.setup("predict")
+    dataloaders, img_shapes, img_ids = dm.predict_dataloader()
+    for dataloader, img_shape, img_id in zip(dataloaders, img_shapes, img_ids):
+        logits, y_true = get_predictions(model, dataloader)
+
+        pred = np.argmax(logits, axis=-1)
+        pred_img = pred.reshape(img_shape[0], img_shape[1])
+
+        # visualize the prediction
+        plt.figure()
+        class_colors = [tum_blue_dark_2, tum_orange, tum_red, tum_grey_5]
+        cmap = LinearSegmentedColormap.from_list("custom", class_colors, N=4)
+        im = plt.imshow(pred_img, cmap, interpolation="none")
+        plt.axis('off')
+        plt.savefig(os.path.join(save_dir, f"{img_id}_prediction.png"), dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.close()
+
+        # tumor heatmap
+        plt.figure()
+
+        im = plt.imshow(logits[:,1].reshape(img_shape[0],img_shape[1]), cmap=tum_cmap)
+        plt.axis('off')
+        plt.savefig(os.path.join(save_dir, f"{img_id}_prediction_tumor.png"), dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.close()
+
+        # do majority voting within a 3x3 window
+        window_size = 3
+        pred_img_padded = np.pad(pred_img, ((window_size//2, window_size//2), (window_size//2, window_size//2)), mode="edge")
+        pred_img_knn = np.zeros_like(pred_img)
+        for i in range(window_size//2, img_shape[0]):
+            for j in range(window_size//2, img_shape[1]):
+                window = pred_img_padded[i-window_size//2:i+window_size//2+1, j-window_size//2:j+window_size//2+1]
+                window_class_counts = [np.sum(window == c, axis=(0,1)) for c in range(0,4)]
+                window_class = np.argmax(window_class_counts)
+                pred_img_knn[i, j] = window_class
+
+        # visualize the prediction
+        plt.figure()
+        im = plt.imshow(pred_img_knn, cmap, interpolation="none")
+        plt.axis('off')
+        plt.savefig(os.path.join(save_dir, f"{img_id}_prediction_knn.png"), dpi=300, bbox_inches='tight', pad_inches=0)
+        plt.close()
+
+        # convert to long tensor
+        y_pred_knn = torch.LongTensor(pred_img_knn.flatten())
+        idx = np.argwhere(y_true >= 0)
+        metrics = get_metrics(y_pred_knn[idx], y_true[idx], roc_auc=False)
+
+        # save results as json
+        os.makedirs(os.path.join(save_dir, "knn_metrics"), exist_ok=True)
+        with open(os.path.join(save_dir, "knn_metrics", f"{img_id}_metrics.json"), "w") as f:
+            json.dump(metrics, f, indent=4)
+
+
+def test_lableled(model, files, fold, save_dir):
+    dm_test = HelicoidDataModule(files=files, fold=fold)
+    dm_test.setup("test")
+    dataloader = dm_test.test_dataloader()
+    logits, y_true = get_predictions(model, dataloader)
+
+    metrics = get_metrics(logits, y_true)
     # save results as json
-    with open(os.path.join(save_dir, "metrics.json"), "w") as f:
-        json.dump(retults, f, indent=4)
-
+    with open(os.path.join(save_dir, f"{fold}_metrics.json"), "w") as f:
+        json.dump(metrics, f, indent=4)
 
 
 def main():
@@ -155,15 +177,15 @@ def main():
     for fold in args.folds:
 
         checkpoint_path = os.path.join(args.log_dir, f"{fold}.ckpt")
-        save_dir = os.path.join(args.log_dir, "results", fold)
+        save_dir = os.path.join(args.log_dir, "results")
         os.makedirs(save_dir, exist_ok=True)
 
         model = ClassificationModel.load_from_checkpoint(checkpoint_path)
         model.eval()
 
-        visualize_weights(model, save_dir)
+        # visualize_weights(model, save_dir)
 
-        metrics(model, files, fold, save_dir)
+        test_lableled(model, files, fold, save_dir)
 
         # test_img(model, files, fold, save_dir)
 
