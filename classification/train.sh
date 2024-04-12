@@ -271,7 +271,7 @@
 
 CUDA_VISIBLE_DEVICES=0 python train.py \
     --mode baseline \
-    --log_dir models5/baseline/v1 \
+    --log_dir models5/baseline/v1_2 \
     --folds fold1 fold2 fold3 fold4 fold5 \
     --hidden_dim 4 \
     --last_layer_dim 4 \
@@ -305,9 +305,9 @@ CUDA_VISIBLE_DEVICES=1 python train.py \
 
 # ### Baseline with heatmaps
 
-CUDA_VISIBLE_DEVICES=2 python train.py \
+CUDA_VISIBLE_DEVICES=1 python train.py \
     --mode heatmap \
-    --log_dir models5/heatmaps/v1 \
+    --log_dir models5/heatmaps/v1_4 \
     --folds fold1 fold2 fold3 fold4 fold5 \
     --hidden_dim 43 \
     --last_layer_dim 39 \
@@ -336,4 +336,38 @@ CUDA_VISIBLE_DEVICES=3 python train.py \
     --num_layers 3 \
     --lr 6.901845408537136e-05 \
     --weight_decay 2.517141032510143e-05 \
+    --batch_size 32
+
+####### Lower learning rate 
+CUDA_VISIBLE_DEVICES=0 python train.py \
+    --mode heatmap \
+    --log_dir models5/heatmaps/v1_5 \
+    --folds fold1 fold2 fold3 fold4 fold5 \
+    --hidden_dim 43 \
+    --last_layer_dim 39 \
+    --num_layers 0 \
+    --lr 1e-05 \
+    --weight_decay 0.02865007549783739 \
+    --batch_size 64
+
+CUDA_VISIBLE_DEVICES=1 python train.py \
+    --mode heatmap \
+    --log_dir models5/heatmaps/v1_5 \
+    --folds fold1 fold2 fold3 fold4 fold5 \
+    --hidden_dim 43 \
+    --last_layer_dim 39 \
+    --num_layers 0 \
+    --lr 5e-10 \
+    --weight_decay 0.02865007549783739 \
+    --batch_size 64
+
+CUDA_VISIBLE_DEVICES=7 python train.py \
+    --mode heatmap_only \
+    --log_dir models5/heatmap_only/v1 \
+    --folds fold1 fold2 fold3 fold4 fold5 \
+    --hidden_dim 4 \
+    --num_layers 0 \
+    --last_layer_dim 4 \
+    --lr 1.6756813861488494e-05 \
+    --weight_decay 0.0029548945587266834 \
     --batch_size 32

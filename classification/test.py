@@ -13,7 +13,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from model import ClassificationModel
 from dataloader import HelicoidDataModule
 
-from torchmetrics.classification import MulticlassAccuracy, MulticlassRecall, MulticlassPrecision, MulticlassF1Score, MulticlassAUROC, MulticlassPrecisionRecallCurve
+from torchmetrics.classification import MulticlassAccuracy, MulticlassRecall, MulticlassPrecision, MulticlassF1Score, MulticlassAUROC, Specificity
 
 # add parent folder to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -66,32 +66,53 @@ def get_predictions(model, dataloader):
     y_true = torch.concatenate(y_true, axis=0)
     return logits, y_true
 
-def get_metrics(logits, y_true, roc_auc=True):
+def get_metrics(pred, y_true, logits=True):
     accuracy = MulticlassAccuracy(num_classes=4, average=None)
     precision = MulticlassPrecision(num_classes=4, average=None)
     recall = MulticlassRecall(num_classes=4, average=None)
     f1_score = MulticlassF1Score(num_classes=4, average=None)
+    specificity = Specificity(task="multiclass", num_classes=4, average=None)
 
     accuracy_macro = MulticlassAccuracy(num_classes=4, average="macro")
     precision_macro = MulticlassPrecision(num_classes=4, average="macro")
     recall_macro = MulticlassRecall(num_classes=4, average="macro")
     f1_score_macro = MulticlassF1Score(num_classes=4, average="macro")
+    specificity_macro = Specificity(task="multiclass", num_classes=4, average="macro")
 
     results = {
-        "accuracy": accuracy(logits, y_true).numpy().tolist(),
-        "accuracy_macro": accuracy_macro(logits, y_true).numpy().tolist(),
-        "precision": precision(logits, y_true).numpy().tolist(),
-        "precision_macro": precision_macro(logits, y_true).numpy().tolist(),
-        "recall": recall(logits, y_true).numpy().tolist(),
-        "recall_macro": recall_macro(logits, y_true).numpy().tolist(),
-        "f1_score": f1_score(logits, y_true).numpy().tolist(),
-        "f1_score_macro": f1_score_macro(logits, y_true).numpy().tolist(),
+        "accuracy": accuracy(pred, y_true).numpy().tolist(),
+        "accuracy_macro": accuracy_macro(pred, y_true).numpy().tolist(),
+        "precision": precision(pred, y_true).numpy().tolist(),
+        "precision_macro": precision_macro(pred, y_true).numpy().tolist(),
+        "recall": recall(pred, y_true).numpy().tolist(),
+        "recall_macro": recall_macro(pred, y_true).numpy().tolist(),
+        "f1_score": f1_score(pred, y_true).numpy().tolist(),
+        "f1_score_macro": f1_score_macro(pred, y_true).numpy().tolist(),
+        "specificity": specificity(pred, y_true).numpy().tolist(),
+        "specificity_macro": specificity_macro(pred, y_true).numpy().tolist()
     }
-    if roc_auc:
+
+    if logits:
         roc_auc = MulticlassAUROC(num_classes=4, average=None)
         roc_auc_macro = MulticlassAUROC(num_classes=4, average="macro")
-        results["roc_auc"] = roc_auc(logits, y_true).numpy().tolist()
-        results["roc_auc_macro"] = roc_auc_macro(logits, y_true).numpy().tolist()
+        results["roc_auc"] = roc_auc(pred, y_true).numpy().tolist()
+        results["roc_auc_macro"] = roc_auc_macro(pred, y_true).numpy().tolist()
+
+    # accuracy from MultiClassAccuracy is the same as MulticlassRecall, so I calculate it manually
+    pred = pred.numpy()
+    y_true = y_true.numpy().squeeze()
+    if logits:
+        pred = np.argmax(logits, axis=-1)
+    else:
+        pred = pred.squeeze()
+    print(np.shape(pred), np.shape(y_true))
+    accuracy = []
+    for i in range(4):
+        TP = np.sum((pred == i) & (y_true == i))
+        TN = np.sum((pred != i) & (y_true != i))
+        accuracy.append((TP + TN) / np.shape(y_true)[0])
+    results["accuracy"] = accuracy
+
     return results
     
 
@@ -143,7 +164,10 @@ def test_img(model, files, fold, save_dir):
         # convert to long tensor
         y_pred_knn = torch.LongTensor(pred_img_knn.flatten())
         idx = np.argwhere(y_true >= 0)
-        metrics = get_metrics(y_pred_knn[idx], y_true[idx], roc_auc=False)
+        metrics = get_metrics(y_pred_knn[idx], y_true[idx], logits=False)
+
+        metrics["label_counts"] = [int(np.sum(y_true.cpu().numpy() == i)) for i in range(4)]
+        print(metrics)
 
         # save results as json
         os.makedirs(os.path.join(save_dir, "knn_metrics"), exist_ok=True)
@@ -185,11 +209,9 @@ def main():
 
         # visualize_weights(model, save_dir)
 
-        test_lableled(model, files, fold, save_dir)
+        # test_lableled(model, files, fold, save_dir)
 
-        # test_img(model, files, fold, save_dir)
-
-
+        test_img(model, files, fold, save_dir)
 
 
 if __name__ == "__main__":

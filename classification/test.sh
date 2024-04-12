@@ -18,7 +18,7 @@ CUDA_VISIBLE_DEVICES=1 python test.py \
 
 ### Baseline with heatmaps
 
-CUDA_VISIBLE_DEVICES=1 python test.py \
+CUDA_VISIBLE_DEVICES=0 python test.py \
     --mode heatmap \
     --log_dir ./models5/heatmaps/v1 \
     --folds fold1 fold2 fold3 fold4 fold5
