@@ -103,7 +103,7 @@ def plot_spectrum(spectr, wavelengths, fig, ax, legend=False, nspectr=None, lege
         cbar.ax.set_xticks([])
         cbar.set_label("Pixel \n Spectra")
 
-def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5), legend_loc='upper left'):
+def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5), legend=False, legend_loc='upper left'):
     '''
     Plot the spectra of the pixels in the classes Normal, Tumor, and Hypervascularized of the ground truth map.
     input:
@@ -125,7 +125,7 @@ def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5), le
     img = get_array(img)
     gt_map = gt_map.asarray()
 
-    class_labels = ["Not labled", "Normal", "Tumor", "Hypervascularized", "Background"]
+    class_labels = ["Not labled", "Normal", "Tumor", "Blood", "Background"]
     class_ids = [1, 2, 3]
     fig, axs = plt.subplots(1, len(class_ids), figsize=figsize)
     # plot pixel spectra for each class
@@ -134,7 +134,7 @@ def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5), le
         class_pixels = img[mask]
         if len(mask[0]) == 0: 
             continue
-        plot_spectrum(class_pixels, bands, fig=fig, ax=axs[i], legend=True, nspectr=nspectr, legend_loc=legend_loc)
+        plot_spectrum(class_pixels, bands, fig=fig, ax=axs[i], legend=legend, nspectr=nspectr, legend_loc=legend_loc)
         axs[i].set_title(class_labels[class_id])
 
     return fig, axs
@@ -156,7 +156,7 @@ def plot_bands(img, bands=[200, 300, 400, 500, 600, 700], figsize=(18,3)):
     for i, band in enumerate(bands):
         img_band = img[:,:,band]
         img_band = (img_band - np.min(img_band)) / (np.max(img_band) - np.min(img_band))
-        vmax = np.percentile(img_band, 99.9)
+        vmax = np.percentile(img_band, 99)
         axs[i].imshow(img_band, cmap='gray', aspect='equal', vmin=0, vmax=vmax)
         axs[i].set_title(f'Band {band}')
         axs[i].axis('off')
@@ -250,7 +250,7 @@ def plot_class_dist(img, gt_map, bands, class_ids, class_labels, class_colors, f
         # ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
         order = [0,2,1]
         handles, labels = plt.gca().get_legend_handles_labels()
-        ax.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc=legend_loc, handlelength=0.8, borderaxespad=0.)
+        ax.legend([handles[idx] for idx in order],[labels[idx] for idx in order], loc=legend_loc, handlelength=0.8, borderaxespad=0.5)
         # ax.legend(loc=legend_loc, handlelength=0.8, borderaxespad=0.)
     return fig, ax
 
