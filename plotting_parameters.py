@@ -177,7 +177,7 @@ def get_rgb(img, bands=[109,192,425]):
             bands = [int(band) for band in img.metadata["default bands"]]
     img = get_array(img)
     img_rgb = np.stack([img[:,:,bands[2]], img[:,:,bands[1]], img[:,:,bands[0]]], axis=-1).squeeze()
-    img_rgb = (img_rgb - img_rgb.min(axis=(0,1)))/ (np.percentile(img_rgb, 99.9) - img_rgb.min(axis=(0,1)))
+    img_rgb = (img_rgb - img_rgb.min(axis=(0,1)))/ (np.percentile(img_rgb, 99) - img_rgb.min(axis=(0,1)))
     img_rgb = np.clip(img_rgb, 0, 1)
     return img_rgb
 
@@ -211,7 +211,7 @@ def plot_img(img, gt_map=None, class_labels=None, class_colors=None, bands=[109,
                         np.array(color),
                         img_rgb)
             ax.scatter([],[], label=class_labels[class_id], color=class_colors[class_id])
-    ax.imshow(img_rgb, aspect='equal', vmin=0, vmax=np.percentile(img_rgb, 50))
+    ax.imshow(img_rgb, aspect='equal')
     ax.axis('off')
     if legend:
         ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0., markerscale=1)
