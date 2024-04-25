@@ -102,10 +102,9 @@ def get_metrics(pred, y_true, logits=True):
     pred = pred.numpy()
     y_true = y_true.numpy().squeeze()
     if logits:
-        pred = np.argmax(logits, axis=-1)
+        pred = np.argmax(pred, axis=-1)
     else:
         pred = pred.squeeze()
-    print(np.shape(pred), np.shape(y_true))
     accuracy = []
     for i in range(4):
         TP = np.sum((pred == i) & (y_true == i))
@@ -128,7 +127,7 @@ def test_img(model, files, fold, save_dir):
 
         # visualize the prediction
         plt.figure()
-        class_colors = [tum_blue_dark_2, tum_orange, tum_red, tum_grey_5]
+        class_colors = [tum_blue_dark_2, tum_orange, tum_red, tum_grey_1]
         cmap = LinearSegmentedColormap.from_list("custom", class_colors, N=4)
         im = plt.imshow(pred_img, cmap, interpolation="none")
         plt.axis('off')
@@ -192,11 +191,13 @@ def main():
     if args.mode == "baseline":
         files = ["preprocessed.npy"]
     elif args.mode == "heatmap":
-        files = ["preprocessed.npy", "heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
+        # files = ["preprocessed.npy", "heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
+        files = ["preprocessed.npy", "osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
     elif args.mode == "heatmap_only":
-        files = ["heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
-    elif args.mode == "baseline_reduced":
-        files = ["preprocessed_reduced"]
+        # files = ["heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
+        files = ["osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
+    # elif args.mode == "baseline_reduced":
+    #     files = ["preprocessed_reduced"]
     
     for fold in args.folds:
 
@@ -209,7 +210,7 @@ def main():
 
         # visualize_weights(model, save_dir)
 
-        # test_lableled(model, files, fold, save_dir)
+        test_lableled(model, files, fold, save_dir)
 
         test_img(model, files, fold, save_dir)
 

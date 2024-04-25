@@ -1,18 +1,18 @@
 ### Baseline (just spectra)
 
-CUDA_VISIBLE_DEVICES=1 python test.py \
+CUDA_VISIBLE_DEVICES=7 python test.py \
     --mode baseline \
-    --log_dir ./models5/baseline/v1 \
+    --log_dir ./models7/baseline/combined \
     --folds fold1 fold2 fold3 fold4 fold5
 
-CUDA_VISIBLE_DEVICES=1 python test.py \
+CUDA_VISIBLE_DEVICES=4 python test.py \
     --mode baseline \
-    --log_dir ./models5/baseline/v2 \
+    --log_dir ./models6/baseline/v2 \
     --folds fold1 fold2 fold3 fold4 fold5
 
-CUDA_VISIBLE_DEVICES=1 python test.py \
+CUDA_VISIBLE_DEVICES=4 python test.py \
     --mode baseline \
-    --log_dir ./models5/baseline/v3 \
+    --log_dir ./models6/baseline/v3 \
     --folds fold1 fold2 fold3 fold4 fold5
 
 
@@ -20,17 +20,17 @@ CUDA_VISIBLE_DEVICES=1 python test.py \
 
 CUDA_VISIBLE_DEVICES=0 python test.py \
     --mode heatmap \
-    --log_dir ./models5/heatmaps/v1 \
+    --log_dir ./models7/heatmaps/combined \
     --folds fold1 fold2 fold3 fold4 fold5
 
-CUDA_VISIBLE_DEVICES=1 python test.py \
+CUDA_VISIBLE_DEVICES=4 python test.py \
     --mode heatmap \
-    --log_dir ./models5/heatmaps/v2 \
+    --log_dir ./models6/heatmaps/v2 \
     --folds fold1 fold2 fold3 fold4 fold5
 
-CUDA_VISIBLE_DEVICES=1 python test.py \
+CUDA_VISIBLE_DEVICES=4 python test.py \
     --mode heatmap \
-    --log_dir ./models5/heatmaps/v3 \
+    --log_dir ./models6/heatmaps/v3 \
     --folds fold1 fold2 fold3 fold4 fold5
     
 
@@ -56,15 +56,15 @@ DEVICES=0 python test.py \
 
 CUDA_VISIBLE_DEVICES=0 python test.py \
     --mode heatmap_only \
-    --log_dir ./models/heatmap_only/v1 \
+    --log_dir ./models7/heatmap_only/combined \
     --folds fold1 fold2 fold3 fold4 fold5
 
-CUDA_VISIBLE_DEVICES=0 python test.py \
+CUDA_VISIBLE_DEVICES=3 python test.py \
     --mode heatmap_only \
-    --log_dir ./models/heatmap_only/v2 \
+    --log_dir ./models6/heatmap_only/v2 \
     --folds fold1 fold2 fold3 fold4 fold5
 
-CUDA_VISIBLE_DEVICES=0 python test.py \
+CUDA_VISIBLE_DEVICES=3 python test.py \
     --mode heatmap_only \
-    --log_dir ./models/heatmap_only/v3 \
+    --log_dir ./models6/heatmap_only/v3 \
     --folds fold1 fold2 fold3 fold4 fold5

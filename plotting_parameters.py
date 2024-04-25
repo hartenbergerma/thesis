@@ -347,13 +347,14 @@ def plot_tsne(spectr, gt_map, class_labels, mode='equal', figsize=(5, 4), legend
 
     return fig, ax
 
-def plot_concentrations(c, endmember_labels=None, figsize=(5.8,2.3)):
+def plot_concentrations(c, endmember_labels=None, figsize=(5.8,2.3), normalize=True):
     '''
     Plot the concentration maps of the endmembers. The concentration maps are normalized to the range [0,1], and the colorbar is added to the last subplot.
     input:
         c: np.array, shape (L, M, N) where N is the number of endmembers
         endmember_labels: list of strings containing the endmember labels
         figsize: tuple, the size of the figure
+        normalize: bool, if True, the concentration maps are normalized to the range [0,1]
     output:
         fig: figure handle to the plot
         axs: axes handle to the plot

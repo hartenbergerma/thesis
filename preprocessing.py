@@ -102,7 +102,7 @@ def osp(abs, endmembers_proj, endmember_target, device="cpu"):
 
     return abs_proj
 
-def icem(spectr, t, lmda=0, device='cpu'):
+def icem(spectr, t, lmda=0, R=None, device='cpu'):
     '''
     Improved constrained energy minimization (ICEM) algorithm.
     input:
@@ -120,7 +120,11 @@ def icem(spectr, t, lmda=0, device='cpu'):
     M = spectr.reshape(-1, input_shape[-1])
 
     N, p = M.shape
-    R_hat = torch.mm(M.T, M) / N + lmda * torch.eye(p, device=device)
+    if R is None:
+        R = torch.mm(M.T, M) / N
+    else:
+        R = torch.tensor(R, device=device).float()
+    R_hat = R + lmda * torch.eye(p, device=device)
     Rinv = torch.inverse(R_hat)
     t_Rinv = torch.mv(Rinv.T, t)
     denom = torch.dot(t, t_Rinv)
