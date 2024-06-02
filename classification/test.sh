@@ -32,25 +32,6 @@ CUDA_VISIBLE_DEVICES=4 python test.py \
     --mode heatmap \
     --log_dir ./models6/heatmaps/v3 \
     --folds fold1 fold2 fold3 fold4 fold5
-    
-
-### Baseline with reduced band count
-
-DEVICES=0 python test.py \
-    --mode baseline_reduced \
-    --log_dir ./models/baseline_red/v1 \
-    --folds fold1 fold2 fold3 fold4 fold5
-
-DEVICES=0 python test.py \
-    --mode baseline_reduced \
-    --log_dir ./models/baseline_red/v2 \
-    --folds fold1 fold2 fold3 fold4 fold5
-
-DEVICES=0 python test.py \
-    --mode baseline_reduced \
-    --log_dir ./models/baseline_red/v3 \
-    --folds fold1 fold2 fold3 fold4 fold5
-
 
 ### Heatmaps only
 
