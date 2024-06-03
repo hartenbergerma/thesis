@@ -180,7 +180,7 @@ def main():
         os.makedirs(save_dir, exist_ok=True)
 
         # calculate metrics for labeled pixels and save results
-        test_lableled(model, files, fold, save_dir)
+        # test_lableled(model, files, fold, save_dir)
 
         # predict labels for whole image, perform majority voting to reduce noise and calculate metrics for the labeled pixels image-wise
         # matrics and and prediction maps are saved
