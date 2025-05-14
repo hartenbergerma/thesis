@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 from model import ClassificationModel
 from dataloader import HelicoidDataModule
-from hyperspectral_transforms import *
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import EarlyStopping, ModelCheckpoint
 
@@ -51,6 +50,8 @@ def train(config, dm):
 
 
 def main():
+
+    # data to use as the model input
     if args.mode == "baseline":
         files = ["preprocessed.npy"]
     elif args.mode == "heatmap":
@@ -59,6 +60,7 @@ def main():
         files = ["osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
 
 
+    # train model for each fold
     for fold in args.folds:
         dm = HelicoidDataModule(files=files, fold=fold)
         dm.setup("fit")

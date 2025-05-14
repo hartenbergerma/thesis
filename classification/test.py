@@ -27,35 +27,6 @@ parser.add_argument("--folds", nargs='+', type=str, required=True, help="Fold to
 args = parser.parse_args()
 
 
-def visualize_weights(model, save_dir):
-    layer_weights = []
-    for layer in model.layers:
-        if isinstance(layer, nn.Linear):
-            layer_weights.append(layer.weight.detach().cpu().numpy())
-
-    # individual weights
-    plt.imshow(np.abs(layer_weights[0]), cmap="hot", aspect="auto", interpolation="none")
-    cax = plt.colorbar()
-    cax.set_label("Weight magnitude")
-    plt.xlabel("Bands")
-    # plt.xticks([0, 80, 180, 280, 380], ["520", "600", "700","800", "900"])
-    # plt.xticks([0,11,22,33,44,55,66,77])
-    plt.ylabel("Hidden units")
-    plt.yticks([])
-    plt.savefig(os.path.join(save_dir, "weights.png"))
-
-    # mean weights
-    mean_weights = np.mean(np.abs(layer_weights[0]), axis=0)
-    plt.figure()
-    plt.bar(np.arange(0, mean_weights.shape[0]), mean_weights)
-    plt.xlabel("Bands")
-    # plt.xticks([0, 80, 180, 280, 380], ["520", "600", "700","800", "900"])
-    # plt.xticks([0,11,22,33,44,55,66])
-    # plt.xlim(-1, 77)
-    # plt.vlines([10.5, 21.5, 32.5, 43.5, 54.5, 65.5], 0, 0.21, color='k', linestyles="dashed")
-    plt.ylabel("Mean weight magnitude")
-    plt.savefig(os.path.join(save_dir, "mean_weights.png"))
-
 def get_predictions(model, dataloader):
     logits = []
     y_true = []
@@ -188,20 +159,23 @@ def test_lableled(model, files, fold, save_dir):
 
 def main():
 
+    # data to use as the model input
     if args.mode == "baseline":
         files = ["preprocessed.npy"]
     elif args.mode == "heatmap":
-        # files = ["preprocessed.npy", "heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
         files = ["preprocessed.npy", "osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
     elif args.mode == "heatmap_only":
-        # files = ["heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
         files = ["osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
-    # elif args.mode == "baseline_reduced":
-    #     files = ["preprocessed_reduced"]
+
     
+    # test model for each fold
     for fold in args.folds:
 
+        # load model
         checkpoint_path = os.path.join(args.log_dir, f"{fold}.ckpt")
+        model = ClassificationModel.load_from_checkpoint(checkpoint_path)
+        model.eval()
+
         save_dir = os.path.join(args.log_dir, "results")
         os.makedirs(save_dir, exist_ok=True)
 

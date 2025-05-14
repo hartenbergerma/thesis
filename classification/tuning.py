@@ -41,20 +41,20 @@ def train(config, dm):
     return model
 
 def main():
+
+    # data to use as the model input
     if args.mode == "baseline":
         files = ["preprocessed.npy"]
     elif args.mode == "heatmap":
-        # files = ["preprocessed.npy", "heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
         files = ["preprocessed.npy", "osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
     elif args.mode == "heatmap_only":
-        # files = ["heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
         files = ["osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
-    # elif args.mode == "baseline_reduced":
-    #     files = ["preprocessed_reduced"]
+
 
     dm = HelicoidDataModule(files=files, fold="fold3")
     dm.setup("fit")
 
+    # train 50 randomly sampled configurations
     np.random.seed(0)
     for i in range(50):
         hidden_dim = np.random.randint(4, 64)

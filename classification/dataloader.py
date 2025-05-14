@@ -116,17 +116,13 @@ class HelicoidDataModule(pl.LightningDataModule):
             folds = json.load(f)
 
         if stage=="fit":
-            # self.dataset_train = get_helicoid_Dataset(folds[self.fold]["train"], self.files, mode='labeled_balanced')
-            # self.dataset_val = get_helicoid_Dataset(folds[self.fold]["val"], self.files)
             self.dataset_train = self.dataset_loader.get_train_dataset(folds[self.fold]["train"])
             self.dataset_val = self.dataset_loader.get_val_dataset(folds[self.fold]["val"])
         if stage=="val":
             self.dataset_val = self.dataset_loader.get_val_dataset(folds[self.fold]["val"])
         if stage=="test":
-            # self.dataset_test = get_helicoid_Dataset(folds[self.fold]["test"], self.files)
             self.dataset_test = self.dataset_loader.get_test_dataset(folds[self.fold]["test"])
         if stage=="predict":
-            # self.dataset_predict = get_helicoid_Dataset(folds[self.fold]["test"], self.files, mode='all')
             self.datasets_predict, self.test_img_shapes = self.dataset_loader.get_predict_datasets(folds[self.fold]["test"])
             self.image_ids = folds[self.fold]["test"]
 

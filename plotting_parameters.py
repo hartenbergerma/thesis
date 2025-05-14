@@ -123,7 +123,7 @@ def plot_class_spectra(img, gt_map, nspectr=None, bands=None, figsize=(18,5), le
             raise ValueError("bands must be specified if img is not a spectral.ImageArray")
 
     img = get_array(img)
-    gt_map = gt_map.asarray()
+    gt_map = get_array(gt_map)
 
     class_labels = ["Not labled", "Normal", "Tumor", "Blood", "Background"]
     class_ids = [1, 2, 3]
@@ -375,7 +375,7 @@ def plot_concentrations(c, endmember_labels=None, figsize=(5.8,2.3), normalize=T
         norm = mpl.colors.Normalize(vmin=0, vmax=1)
         sm = plt.cm.ScalarMappable(cmap=tum_cmap, norm=norm)
         sm.set_array([])
-        fig.colorbar(sm, cax=cax, label='Similarity')
+        fig.colorbar(sm, cax=cax)
     else:
         fig, axs = plt.subplots(nrow, ncol, figsize=figsize)
         for i in range(nrow*ncol):
@@ -389,7 +389,7 @@ def plot_concentrations(c, endmember_labels=None, figsize=(5.8,2.3), normalize=T
         norm = mpl.colors.Normalize(vmin=0, vmax=1)
         sm = plt.cm.ScalarMappable(cmap=tum_cmap, norm=norm)
         sm.set_array([])
-        fig.colorbar(sm, cax=cax, label='Similarity')
+        fig.colorbar(sm, cax=cax)
 
     _ = plt.tight_layout()
     return fig, axs
