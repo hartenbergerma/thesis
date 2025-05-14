@@ -212,7 +212,7 @@ def main():
 
         test_lableled(model, files, fold, save_dir)
 
-        test_img(model, files, fold, save_dir)
+        # test_img(model, files, fold, save_dir)
 
 
 if __name__ == "__main__":

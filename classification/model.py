@@ -1,5 +1,5 @@
 import torch
-import lightning.pytorch as pl
+import pytorch_lightning as pl
 from torch import optim, nn, Tensor
 from torchmetrics import Accuracy 
 from torchmetrics.classification import MulticlassF1Score, MulticlassAccuracy

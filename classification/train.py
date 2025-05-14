@@ -54,13 +54,10 @@ def main():
     if args.mode == "baseline":
         files = ["preprocessed.npy"]
     elif args.mode == "heatmap":
-        # files = ["preprocessed.npy", "heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
         files = ["preprocessed.npy", "osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
     elif args.mode == "heatmap_only":
-        # files = ["heatmaps_osp.npy", "heatmaps_osp_diff.npy", "heatmaps_osp_diff_mc.npy", "heatmaps_icem.npy", "heatmaps_icem_diff.npy", "heatmaps_icem_diff_mc.npy"]
         files = ["osp_absolute.npy", "osp_rel_lit.npy", "osp_rel_mc.npy", "cem_absolute.npy", "cem_rel_lit.npy", "cem_rel_mc.npy"]
-    # elif args.mode == "baseline_reduced":
-    #     files = ["preprocessed_reduced"]
+
 
     for fold in args.folds:
         dm = HelicoidDataModule(files=files, fold=fold)

@@ -1,0 +1,5 @@
+__pycache__
+classification/models
+mc_sim/spectra_mc
+*.csv
+*.sh
